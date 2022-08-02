@@ -184,11 +184,9 @@ class ConfigExtractor(Karton):
         extractor = create_extractor(self)
         with sample.download_temporary_file() as temp:  # type: ignore
             extractor.push_file(temp.name)
-        configs = extractor.config
-
-        if configs:
+        if configs := extractor.config:
             config = configs[0]
-            self.log.info("Got config: {}".format(json.dumps(config)))
+            self.log.info(f"Got config: {json.dumps(config)}")
             self.report_config(config, sample)
         else:
             self.log.info("Failed to get config")
@@ -218,18 +216,17 @@ class ConfigExtractor(Karton):
                 dump_data = f.read()
 
             if not dump_data:
-                self.log.warning("Dump {} is empty".format(dump_basename))
+                self.log.warning(f"Dump {dump_basename} is empty")
                 continue
 
             try:
-                family = extractor.push_file(dump_info.path, base=dump_info.base)
-                if family:
+                if family := extractor.push_file(
+                    dump_info.path, base=dump_info.base
+                ):
                     self.log.info("Found better %s config in %s", family, dump_basename)
                     dump_candidates[family] = (dump_basename, dump_data)
             except Exception:
-                self.log.exception(
-                    "Error while extracting from {}".format(dump_basename)
-                )
+                self.log.exception(f"Error while extracting from {dump_basename}")
                 results["crashed"] += 1
 
             self.log.debug("Finished analysing dump no. %d", i)
@@ -256,7 +253,7 @@ class ConfigExtractor(Karton):
             self.send_task(task)
             self.report_config(config, sample, parent=parent)
 
-        self.log.info("done analysing, results: {}".format(json.dumps(results)))
+        self.log.info(f"done analysing, results: {json.dumps(results)}")
 
     def get_base_from_drakrun_dump(self, dump_name):
         """
@@ -293,9 +290,7 @@ class ConfigExtractor(Karton):
         """
         if "sdmp" in dump_name:
             return int(dump_name.split(".")[3], 16)
-        elif "raw.unpack" in dump_name:
-            return int(dump_name.split(".")[4], 16)
-        elif "unpack" in dump_name:
+        elif "raw.unpack" in dump_name or "unpack" in dump_name:
             return int(dump_name.split(".")[4], 16)
 
     def analyze_joesandbox(self, sample, dumps):
@@ -303,7 +298,7 @@ class ConfigExtractor(Karton):
             dumpsf = os.path.join(tmpdir, "dumps.zip")
             dumps.download_to_file(dumpsf)
             zipf = zipfile.ZipFile(dumpsf)
-            dumps_path = tmpdir + "/dumps"
+            dumps_path = f"{tmpdir}/dumps"
             zipf.extractall(dumps_path, pwd=b"infected")
             dump_infos = []
             for fname in os.listdir(dumps_path):
@@ -322,9 +317,7 @@ class ConfigExtractor(Karton):
         elif headers["type"] == "analysis" and headers["kind"] == "drakrun":
             # DRAKVUF Sandbox (codename: drakmon OSS)
             sample_hash = hashlib.sha256(sample.content or b"").hexdigest()
-            self.log.info(
-                "Processing drakmon OSS analysis, sample: {}".format(sample_hash)
-            )
+            self.log.info(f"Processing drakmon OSS analysis, sample: {sample_hash}")
             dumps = task.get_resource("dumps.zip")
             self.analyze_drakrun(sample, dumps)
         elif headers["type"] == "analysis" and headers["kind"] == "joesandbox":
